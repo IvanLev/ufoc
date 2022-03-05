@@ -1,15 +1,15 @@
 use stm32ral::{dma, dmamux};
 use stm32ral::{read_reg, write_reg, modify_reg};
 
-/// Driver for the DMAMUX1 peripheral.
-pub struct DMAMux1 {
-    dmamux1: dmamux1::Instance,
+/// Driver for the DMAMUX peripheral.
+pub struct DMAMux {
+    dmamux: dmamux::Instance,
 }
 
-impl DMAMux1 {
+impl DMAMux {
     /// Create a new DMAMux1 driver.
-    pub fn new(dmamux1: dmamux1::Instance) -> Self {
-        Self { dmamux1 }
+    pub fn new(dmamux: dmamux::Instance) -> Self {
+        Self { dmamux }
     }
 
     /// Configures the requested channel, which must be in 0..15, to mux the
@@ -18,22 +18,22 @@ impl DMAMux1 {
     /// Does not enable or support synchronisation or event generation.
     pub fn set(&self, channel: u32, id: u32) {
         match channel {
-            0 => write_reg!(dmamux1, self.dmamux1, C0CR, DMAREQ_ID: id),
-            1 => write_reg!(dmamux1, self.dmamux1, C1CR, DMAREQ_ID: id),
-            2 => write_reg!(dmamux1, self.dmamux1, C2CR, DMAREQ_ID: id),
-            3 => write_reg!(dmamux1, self.dmamux1, C3CR, DMAREQ_ID: id),
-            4 => write_reg!(dmamux1, self.dmamux1, C4CR, DMAREQ_ID: id),
-            5 => write_reg!(dmamux1, self.dmamux1, C5CR, DMAREQ_ID: id),
-            6 => write_reg!(dmamux1, self.dmamux1, C6CR, DMAREQ_ID: id),
-            7 => write_reg!(dmamux1, self.dmamux1, C7CR, DMAREQ_ID: id),
-            8 => write_reg!(dmamux1, self.dmamux1, C8CR, DMAREQ_ID: id),
-            9 => write_reg!(dmamux1, self.dmamux1, C9CR, DMAREQ_ID: id),
-            10 => write_reg!(dmamux1, self.dmamux1, C10CR, DMAREQ_ID: id),
-            11 => write_reg!(dmamux1, self.dmamux1, C11CR, DMAREQ_ID: id),
-            12 => write_reg!(dmamux1, self.dmamux1, C12CR, DMAREQ_ID: id),
-            13 => write_reg!(dmamux1, self.dmamux1, C13CR, DMAREQ_ID: id),
-            14 => write_reg!(dmamux1, self.dmamux1, C14CR, DMAREQ_ID: id),
-            15 => write_reg!(dmamux1, self.dmamux1, C15CR, DMAREQ_ID: id),
+            0 => write_reg!(dmamux, self.dmamux, C0CR, DMAREQ_ID: id),
+            1 => write_reg!(dmamux, self.dmamux, C1CR, DMAREQ_ID: id),
+            2 => write_reg!(dmamux, self.dmamux, C2CR, DMAREQ_ID: id),
+            3 => write_reg!(dmamux, self.dmamux, C3CR, DMAREQ_ID: id),
+            4 => write_reg!(dmamux, self.dmamux, C4CR, DMAREQ_ID: id),
+            5 => write_reg!(dmamux, self.dmamux, C5CR, DMAREQ_ID: id),
+            6 => write_reg!(dmamux, self.dmamux, C6CR, DMAREQ_ID: id),
+            7 => write_reg!(dmamux, self.dmamux, C7CR, DMAREQ_ID: id),
+            8 => write_reg!(dmamux, self.dmamux, C8CR, DMAREQ_ID: id),
+            9 => write_reg!(dmamux, self.dmamux, C9CR, DMAREQ_ID: id),
+            10 => write_reg!(dmamux, self.dmamux, C10CR, DMAREQ_ID: id),
+            11 => write_reg!(dmamux, self.dmamux, C11CR, DMAREQ_ID: id),
+            12 => write_reg!(dmamux, self.dmamux, C12CR, DMAREQ_ID: id),
+            13 => write_reg!(dmamux, self.dmamux, C13CR, DMAREQ_ID: id),
+            14 => write_reg!(dmamux, self.dmamux, C14CR, DMAREQ_ID: id),
+            15 => write_reg!(dmamux, self.dmamux, C15CR, DMAREQ_ID: id),
             _ => panic!("Unknown DMAMUX1 channel {}", channel),
         }
     }
@@ -71,75 +71,63 @@ impl DMA {
     }
 }
 
-/// Driver for controlling a DMA stream.
+/// Driver for controlling a DMA channel.
 pub struct DMAChannel {
-    dma: dma::Instance,
+    pub dma: dma::Instance,
     channel: usize,
 }
 
 impl DMAChannel {
-    /// Create a new DMAChannel for the provided dma instance and stream number.
+    /// Create a new DMAChannel for the provided dma instance and channel number.
     ///
     /// # Safety
-    /// Must only create one instance per stream.
+    /// Must only create one instance per channel.
     pub unsafe fn new(dma: &dma::Instance, channel: usize) -> DMAChannel {
         // NOTE(unsafe): Make a copy of `dma` which we will only modify
-        // NOTE(unsafe): in ways relating exclusively to our stream.
+        // NOTE(unsafe): in ways relating exclusively to our channel.
         let dma = core::mem::transmute_copy(dma);
         DMAChannel { dma, channel }
     }
 
-    pub fn setup(&self) {
-        //let dma = &self.dma;
-
-        // Configure channel 1 for ADC1
-        //write_reg!(dma, dma, CCR1, MSIZE: 1, PSIZE: 1, MINC: 1, CIRC: 1);
-        //write_reg!(dma, dma, PAR1, stm32ral::adc::ADC1 as u32 + ADC_DR_OFFSET);
-
-        // Configure channel 2 for ADC2
-        //write_reg!(dma, dma, CR2, MEM2MEM: Disabled, PL: Medium, MSIZE: Bits16, PSIZE: Bits16,
-        //                          MINC: Enabled, PINC: Disabled, CIRC: Enabled,
-        //                          DIR: FromPeripheral, TCIE: Disabled, EN: Disabled);
-        //write_reg!(dma, dma, PAR2, stm32ral::adc::ADC2 as u32 + ADC_DR_OFFSET);
-
-        // Configure channel 4 for USART1 TX
-        // write_reg!(dma, dma, CR4, MEM2MEM: Disabled, PL: Low, MSIZE: Bits8, PSIZE: Bits8,
-        //                          MINC: Enabled, PINC: Disabled, CIRC: Disabled, DIR: FromMemory,
-        //                          TEIE: Disabled, HTIE: Disabled, TCIE: Disabled, EN: Disabled);
-        //write_reg!(dma, dma, PAR4, stm32ral::usart::USART1 as u32 + USART_TDR_OFFSET);
+    pub fn setup_adc_circ(&self, par0: u32) {
+        let channel = self.channel();
+        write_reg!(dma, channel, CCR1, EN: 0);
+        while read_reg!(dma, channel, CCR1, EN != 0) {}
+        write_reg!(dma, channel, CCR1, MSIZE: 1, PSIZE: 1, MINC: 1, CIRC: 1, TCIE: 1);
+        unsafe { write_reg!(dma, channel, CPAR1, par0); }
     }
 
-    pub fn adc1_enable(&self, buf: &mut [u16]) {
-
-    }
-
-    pub fn adc2_enable(&self, buf: &mut [u16]) {
-
+    pub fn start_adc_rx(&self, m0ar0: &mut [u16]) {
+        self.clear_flags();
+        let channel = self.channel();
+        unsafe { write_reg!(dma, channel, CMAR1, m0ar0.as_ptr() as u32); }
+        write_reg!(dma, channel, CNDTR1, m0ar0.len() as u32);
+        modify_reg!(dma, channel, CCR1, EN: 1);
     }
 
     /// Cancel any ongoing DMA transfer.
     pub fn stop(&self) {
         let channel = self.channel();
-        modify_reg!(dma, channel, CCR1, EN: Disabled);
-        while read_reg!(dma, channel, CCR1, EN != Disabled) {}
+        modify_reg!(dma, channel, CCR1, EN: 0);
+        while read_reg!(dma, channel, CCR1, EN != 0) {}
     }
 
-    /// Get the value of the TCIF flag for this stream.
+    /// Get the value of the TCIF flag for this channel.
     pub fn tcif(&self) -> bool {
-        match self.stream {
-            1 => read_reg!(dma, self.dma, ISR, TCIF1 == Complete),
-            2 => read_reg!(dma, self.dma, ISR, TCIF2 == Complete),
-            3 => read_reg!(dma, self.dma, ISR, TCIF3 == Complete),
-            4 => read_reg!(dma, self.dma, ISR, TCIF4 == Complete),
-            5 => read_reg!(dma, self.dma, ISR, TCIF5 == Complete),
-            6 => read_reg!(dma, self.dma, ISR, TCIF6 == Complete),
-            7 => read_reg!(dma, self.dma, ISR, TCIF7 == Complete),
-            8 => read_reg!(dma, self.dma, ISR, TCIF8 == Complete),
+        match self.channel {
+            1 => read_reg!(dma, self.dma, ISR, TCIF1 == 1),
+            2 => read_reg!(dma, self.dma, ISR, TCIF2 == 1),
+            3 => read_reg!(dma, self.dma, ISR, TCIF3 == 1),
+            4 => read_reg!(dma, self.dma, ISR, TCIF4 == 1),
+            5 => read_reg!(dma, self.dma, ISR, TCIF5 == 1),
+            6 => read_reg!(dma, self.dma, ISR, TCIF6 == 1),
+            7 => read_reg!(dma, self.dma, ISR, TCIF7 == 1),
+            8 => read_reg!(dma, self.dma, ISR, TCIF8 == 1),
             _ => false,
         }
     }
 
-    /// Get the value of the TCIF flag for this channel.
+    /// Get ISR.
     pub fn flags(&self) -> u32 {
         read_reg!(dma, self.dma, ISR)
     }
@@ -147,14 +135,14 @@ impl DMAChannel {
     /// Clear transfer-complete flag for this channel.
     pub fn clear_tcif(&self) {
         match self.channel {
-            1 => write_reg!(dma, self.dma, IFCR, CTCIF1: Clear),
-            2 => write_reg!(dma, self.dma, IFCR, CTCIF2: Clear),
-            3 => write_reg!(dma, self.dma, IFCR, CTCIF3: Clear),
-            4 => write_reg!(dma, self.dma, IFCR, CTCIF4: Clear),
-            5 => write_reg!(dma, self.dma, IFCR, CTCIF5: Clear),
-            6 => write_reg!(dma, self.dma, IFCR, CTCIF6: Clear),
-            7 => write_reg!(dma, self.dma, IFCR, CTCIF7: Clear),
-            8 => write_reg!(dma, self.dma, IFCR, CTCIF8: Clear),
+            1 => write_reg!(dma, self.dma, IFCR, TCIF1: 1),
+            2 => write_reg!(dma, self.dma, IFCR, TCIF2: 1),
+            3 => write_reg!(dma, self.dma, IFCR, TCIF3: 1),
+            4 => write_reg!(dma, self.dma, IFCR, TCIF4: 1),
+            5 => write_reg!(dma, self.dma, IFCR, TCIF5: 1),
+            6 => write_reg!(dma, self.dma, IFCR, TCIF6: 1),
+            7 => write_reg!(dma, self.dma, IFCR, TCIF7: 1),
+            8 => write_reg!(dma, self.dma, IFCR, TCIF8: 1),
             _ => unreachable!(),
         }
     }
@@ -174,12 +162,12 @@ impl DMAChannel {
         }
     }
 
-    /// Return a special dma::Instance where the 0th channel register
+    /// Return a special dma::Instance where the 1st channel register
     /// maps to our specific channel.
     ///
     /// Do not access ISR/IFCR through this instance!
     fn channel(&self) -> dma::Instance {
         let ptr = &*self.dma as *const _ as *const u32;
-        unsafe { core::mem::transmute(ptr.offset(4 * self.channel as isize)) }
+        unsafe { core::mem::transmute(ptr.offset(5 * (self.channel - 1) as isize)) }
     }
 }

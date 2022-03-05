@@ -98,7 +98,7 @@ impl Tim {
         write_reg!(tim1, self.tim, CCR1, period/4);
         write_reg!(tim1, self.tim, CCR2, period/2);
         write_reg!(tim1, self.tim, CCR3, 3*(period/4));
-        write_reg!(tim1, self.tim, CCR4, period - 1); //Triggers when downcounting, after reload
+        write_reg!(tim1, self.tim, CCR4, period - 2); //Triggers when downcounting, after reload
         write_reg!(tim1, self.tim, CCR5, 1); //Triggers when downcounting, before zero
 
         write_reg!(tim1, self.tim, RCR, 1);

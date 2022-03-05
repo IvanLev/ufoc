@@ -37,13 +37,15 @@ pub fn setup(rcc: rcc::Instance, pwr: pwr::Instance, flash: flash::Instance) -> 
                                   PLLN: Div85,
                                   PLLR: Div2,
                                   PLLREN: 1,
-                                  PLLPEN: 1);
+                                  PLLPEN: 1,
+                                  PLLPDIV: Div8);
     modify_reg!(rcc, rcc, CR, PLLON: On); // Turn on PLL
     while read_reg!(rcc, rcc, CR, PLLRDY != 1) {} // Wait for PLL to turn on
     modify_reg!(rcc, rcc, CFGR, SW: PLL); // Switch to PLL as system clock
-    while read_reg!(rcc, rcc, CFGR, SW != 0b11) {} // Wait for the switch to take effect
+    while read_reg!(rcc, rcc, CFGR, SWS != 0b11) {} // Wait for the switch to take effect
 
-    modify_reg!(rcc, rcc, CCIPR, ADC12SEL: PLLP);
+
+
 
     //Set HCLK, APB1 and APB2 dividers
     modify_reg!(rcc, rcc, CFGR, HPRE: Div1, PPRE1: Div1, PPRE2: Div1);
@@ -56,6 +58,9 @@ pub fn setup(rcc: rcc::Instance, pwr: pwr::Instance, flash: flash::Instance) -> 
 
     //Enable AHB2 peripherals: ADC1, ADC2, GPIOA, GPIOC
     modify_reg!(rcc, rcc, AHB2ENR, ADC12EN: Enabled, GPIOAEN: Enabled, GPIOCEN: Enabled);
+
+    //Select ADC Clock source
+    modify_reg!(rcc, rcc, CCIPR, ADC12SEL: PLLP);
 
 
 

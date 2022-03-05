@@ -12,16 +12,24 @@ impl Adc {
     }
 
     pub fn setup_adc1(&mut self, adc12: stm32ral::adc12_common::Instance) {
+
+
         modify_reg!(adc, self.adc, CR, DEEPPWD: Disabled);
 
-        modify_reg!(adc12_common, adc12, CCR, VREFEN: Enabled);
-
+        modify_reg!(adc12_common, adc12, CCR, VREFEN: Enabled, DMACFG: 1);
         modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
+        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {
+            defmt::println!("Waiting!");
+        } // Wait for the avrgen
 
-        // TODO: add vreg stabilization delay
+        for i in 0..10000 {
+            defmt::println!("Delay!");
+        }
 
-        modify_reg!(adc, self.adc, CR, ADCAL: Calibration);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
+        modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
+        while read_reg!(adc, self.adc, CR, ADCAL != 0) {
+            defmt::println!("Calibrating!");
+        } // Wait for the calibration
 
         self.calc_vref();
 
@@ -36,7 +44,7 @@ impl Adc {
         write_reg!(adc, self.adc, SQR2, SQ5: 8, SQ6: 8, SQ7: 8, SQ8: 8);
 
         // Set current injected channels
-        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTEN: RisingEdge, JSQ1: 1, JSQ2: 1);
+        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge, JSQ1: 1, JSQ2: 1);
 
         modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
 
@@ -48,11 +56,18 @@ impl Adc {
         modify_reg!(adc, self.adc, CR, DEEPPWD: Disabled);
 
         modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
+        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {
+            defmt::println!("Waiting!");
+        } // Wait for the avrgen
 
-        // TODO: add vreg stabilization delay
+        for i in 0..10000 {
+            defmt::println!("Delay!");
+        }
 
-        modify_reg!(adc, self.adc, CR, ADCAL: Calibration);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
+        modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
+        while read_reg!(adc, self.adc, CR, ADCAL != 0) {
+            defmt::println!("Calibrating!");
+        } // Wait for the calibration
 
         write_reg!(adc, self.adc, CFGR, JQDIS: Enabled, DMAEN: Enabled, DMACFG: Circular);
         write_reg!(adc, self.adc, CFGR2, 0);
@@ -69,11 +84,6 @@ impl Adc {
                                         JSQ1: 7, JSQ2: 7);
 
         modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
-
-        // TODO: Enable DMA clock
-        //RCC->AHB1ENR |= RCC_AHB1ENR_DMA1EN;
-        //RCC->AHB1ENR |= RCC_AHB1ENR_DMAMUX1EN;
-
     }
     
     fn calc_vref(&mut self) {
@@ -113,18 +123,19 @@ impl Adc {
 
         // Set sampling time for Vrefint
         write_reg!(adc, self.adc, SMPR2, SMP18: Cycles247_5);
-
         write_reg!(adc, self.adc, SQR1, SQ1: 18);
 
         let mut vref_sum : f32 = 0.0;
         for i in 0..ADC_SMPLS {
-            write_reg!(adc, self.adc, CR, ADSTART: Start);
-            while read_reg!(adc, self.adc, ISR, EOC == 0) {}
-            write_reg!(adc, self.adc, ISR, EOC: Clear);
+            modify_reg!(adc, self.adc, CR, ADSTART: Start);
+            while read_reg!(adc, self.adc, ISR, EOC != 1) {}
+            modify_reg!(adc, self.adc, ISR, EOC: Clear);
             vref_sum = vref_sum + (read_reg!(adc, self.adc, DR) as f32);
         }
 
         self.vref_cal = vref_int / ( ( vref_sum / f32::from(ADC_SMPLS) ) / FLT_MAXCNT );
+
+        defmt::println!("VREF_CAL {}: ", self.vref_cal);
 
         write_reg!(adc, self.adc, SMPR2, temp_smpr2);
         write_reg!(adc, self.adc, SQR1 , temp_sqr1);
@@ -147,7 +158,37 @@ impl Adc {
             modify_reg!(adc, self.adc, ISR, ADRDY: Clear);
             modify_reg!(adc, self.adc, CR, ADEN: Enable);
 
-            while read_reg!(adc, self.adc, ISR, ADRDY == 0) {}
+            while read_reg!(adc, self.adc, ISR, ADRDY == 0) {
+                defmt::println!("Enabling!");
+            }
+        }
+    }
+
+    // Clear JEOS interrupt flag
+    pub fn clear_jeos(&self) {
+        modify_reg!(adc, self.adc, ISR, JEOS: Clear);
+    }
+
+    pub fn printRegDump(&self) {
+        unsafe {
+            defmt::println!("ADC1 registers:");
+            defmt::println!("ISR    : {:032b}", core::ptr::read_volatile(0x5000_0000 as *const u32));
+            defmt::println!("IER    : {:032b}", core::ptr::read_volatile(0x5000_0004 as *const u32));
+            defmt::println!("CR     : {:032b}", core::ptr::read_volatile(0x5000_0008 as *const u32));
+            defmt::println!("CFGR   : {:032b}", core::ptr::read_volatile(0x5000_000C as *const u32));
+            defmt::println!("CFGR2  : {:032b}", core::ptr::read_volatile(0x5000_0010 as *const u32));
+            defmt::println!("SMPR1  : {:032b}", core::ptr::read_volatile(0x5000_0014 as *const u32));
+            defmt::println!("SMPR2  : {:032b}", core::ptr::read_volatile(0x5000_0018 as *const u32));
+            defmt::println!("TR1    : {:032b}", core::ptr::read_volatile(0x5000_0020 as *const u32));
+            defmt::println!("TR2    : {:032b}", core::ptr::read_volatile(0x5000_0024 as *const u32));
+            defmt::println!("TR3    : {:032b}", core::ptr::read_volatile(0x5000_0028 as *const u32));
+            defmt::println!("SQR1   : {:032b}", core::ptr::read_volatile(0x5000_0030 as *const u32));
+            defmt::println!("SQR2   : {:032b}", core::ptr::read_volatile(0x5000_0034 as *const u32));
+            defmt::println!("SQR3   : {:032b}", core::ptr::read_volatile(0x5000_0038 as *const u32));
+            defmt::println!("SQR4   : {:032b}", core::ptr::read_volatile(0x5000_003C as *const u32));
+            defmt::println!("DR     : {:032b}", core::ptr::read_volatile(0x5000_0040 as *const u32));
+            defmt::println!("JSQR   : {:032b}", core::ptr::read_volatile(0x5000_004C as *const u32));
+            defmt::println!("CALFACT: {:032b}", core::ptr::read_volatile(0x5000_00B4 as *const u32));
         }
     }
 }

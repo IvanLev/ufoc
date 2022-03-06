@@ -47,6 +47,8 @@ mod app {
     #[init]
     fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
 
+        defmt::println!("Start");
+
         let clocks = rcc::setup(cx.device.RCC, cx.device.PWR, cx.device.FLASH);
 
         cx.core.SCB.enable_icache();
@@ -54,8 +56,8 @@ mod app {
         let cordic = cordic::Cordic::new(cx.device.CORDIC);
         cordic.init();
 
-        let pins = gpio::setup(cx.device.GPIOA, cx.device.GPIOB, cx.device.GPIOC,
-                               cx.device.GPIOD, cx.device.GPIOE);
+        let pins = gpio::setup(cx.device.GPIOA, cx.device.GPIOB, cx.device.GPIOF,
+                               cx.device.GPIOG);
 
         let tim1 = tim::Tim::from_tim1(cx.device.TIM1);
 
@@ -115,7 +117,6 @@ mod app {
 
     #[task(binds=ADC1_2, priority=5, local=[adc1, adc2])]
     fn adc_1_2(mut cx: adc_1_2::Context) {
-        gpio::led_on();
         cx.local.adc1.clear_jeos();
     }
 
@@ -126,7 +127,6 @@ mod app {
 
     #[task(binds=DMA1_CH2, priority=3, local=[adc2_dma])]
     fn dma1_ch2(mut cx: dma1_ch2::Context) {
-        gpio::led_off();
         cx.local.adc2_dma.clear_tcif();
     }
 

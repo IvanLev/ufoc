@@ -10,81 +10,83 @@ type Gpio = gpio::Instance;
 /// including access to switches, the HUB75E interface, and the GPIOs.
 #[allow(clippy::manual_non_exhaustive)]
 pub struct Pins {
-    pub en1: OutputPin,
-    pub en2: OutputPin,
-    pub en3: OutputPin,
-    pub led: OutputPin,
     _private: (),
 }
 
-pub fn setup(gpioa: Gpio, gpiob: Gpio, gpioc: Gpio, _gpiod: Gpio, gpioe: Gpio) -> Pins {
+//
+//OPAMPS:
+//OPAMP1- I_A ADC1_13
+//OPAMP1- I_B ADC2_16
+
+pub fn setup(gpioa: Gpio, gpiob: Gpio, gpiof: Gpio, gpiog: Gpio) -> Pins {
     // GPIOA
-    // PA0: BLDC Phase current I_A ADC1_IN1
-    // PA1: Input voltage divider ADC2_IN2
-    // PA2: Unused
-    // PA3: Unused
-    // PA4: Unused
-    // PA5: Output, Nucleo LED
-    // PA6: Unused
-    // PA7: Unused
-    // PA8: AF6 PWM BLDC U_H
-    // PA9: AF6 PWM BLDC V_H
+    // PA0:  Analog Input voltage divider ADC1_IN1 (BLDC Phase current I_A ADC1_IN1)
+    // PA1:  Analog OPAMP1_VINP (Input voltage divider ADC2_IN2)
+    // PA2:  Analog PCB/FET temperature sensor ADC1_IN8
+    // PA3:  Analog OPAMP1_VINM0
+    // PA4:  GPIO DIR
+    // PA5:  Analog OPAMP2_VINM0 (Output, Nucleo LED)
+    // PA6:  GPIO STEP
+    // PA7:  Analog OPAMP2_VINP
+    // PA8:  AF6 PWM BLDC U_H
+    // PA9:  AF6 PWM BLDC V_H
     // PA10: AF6 PWM BLDC W_H
-    // PA11: Unused
-    // PA12: Unused
+    // PA11: AF6 PWM BLDC U_L
+    // PA12: AF6 PWM BLDC V_L
     // PA13: AF0 SWDIO pulled up
     // PA14: AF0 SWCLK pulled down
-    // PA15: Unused.
+    // PA15: Encoder something
     write_reg!(gpio, gpioa, ODR, 0);
-    write_reg!(gpio, gpioa, MODER, MODER0: Analog, MODER1: Analog, MODER5: Output,
-                                   MODER8: Alternate, MODER9: Alternate, MODER10: Alternate,
-                                   MODER13: Alternate, MODER14: Alternate);
+    write_reg!(gpio, gpioa, MODER, MODER0: Analog, MODER1: Analog, MODER2: Analog, MODER3: Analog,
+                                   MODER4: Input, MODER5: Analog, MODER6: Input,
+                                   MODER7: Analog, MODER8: Alternate, MODER9: Alternate,
+                                   MODER10: Alternate, MODER11: Alternate, MODER12: Alternate,
+                                   MODER13: Alternate, MODER14: Alternate, MODER15: Alternate );
     write_reg!(gpio, gpioa, PUPDR, PUPDR13: PullUp, PUPDR14: PullDown);
 
-    write_reg!(gpio, gpioa, AFRH, AFRH8: 6, AFRH9: 6, AFRH10: 6, AFRH13: 0, AFRH14: 0);
+    write_reg!(gpio, gpioa, AFRH, AFRH8: 6, AFRH9: 6, AFRH10: 6, AFRH11: 6, AFRH12: 6, AFRH13: 0,
+                                  AFRH14: 0);
 
     // GPIOB
-    // PB0-12: Unused
-    // PB13: AF6 PWM BLDC U_L
-    // PB14: AF6 PWM BLDC V_L
-    // PB15: AF4 PWM BLDC W_L
+    // PB0:  GPIO EN
+    // PB1-2: Not on chip
+    // PB3:  Encoder something
+    // PB4:  Encoder something
+    // PB5:  Encoder something
+    // PB6:  Encoder something
+    // PB7:  Encoder something
+    // PB8:  Encoder something
+    // PB9-15: Not on chip
     write_reg!(gpio, gpiob, ODR, 0);
-    write_reg!(gpio, gpiob, MODER, MODER13: Alternate, MODER14: Alternate, MODER15: Alternate);
+    write_reg!(gpio, gpiob, MODER, MODER0: Input);
 
-    write_reg!(gpio, gpiob, AFRH, AFRH13: 6, AFRH14: 6, AFRH15: 4);
+    //write_reg!(gpio, gpiob, AFRH, AFRH13: 6, AFRH14: 6, AFRH15: 4);
 
     // GPIOC
-    // PC0: Unused
-    // PC1: BLDC Phase current I_B ADC2_IN7
-    // PC2: PCB/FET temperature sensor ADC1_IN8
-    // PC3: Unused
-    // PC4: Unused
-    // PC5: Unused
-    // PC6: Unused
-    // PC7: Unused
-    // PC8: Unused
-    // PC9: Unused
-    // PC10: Output, en1
-    // PC11: Output, en2
-    // PC12: Output, en3
-    // PC13: Unused
-    // PC14: Unused
-    // PC15: Unused.
-    write_reg!(gpio, gpioc, ODR, 0);
-    write_reg!(gpio, gpioc, MODER, MODER1: Analog, MODER2: Analog, MODER10: Output,
-                                   MODER11: Output, MODER12: Output);
+    // PC0-15: Not on chip
 
     // GPIOD
-    // PD0-15: Unused
+    // PD0-15: Not on chip
 
     // GPIOE
-    // PE0-15: Unused
+    // PE0-15: Not on chip
+
+    // GPIOF
+    // PF0: AF6 PWM BLDC W_L
+    // PF1: GPIO
+    // PF2-15: Not on chip
+    write_reg!(gpio, gpiof, ODR, 0);
+    write_reg!(gpio, gpiof, MODER, MODER0: Alternate, MODER1: Input);
+
+    write_reg!(gpio, gpiob, AFRL, AFRL0: 6);
+
+    // GPIOG
+    // PE0-9: Not on chip
+    // PE10: SW UART?
+    // PE11-15: Not on chip
+    write_reg!(gpio, gpiog, ODR, 0);
 
     Pins {
-        en1:        OutputPin::new(&gpioc, 10),
-        en2:        OutputPin::new(&gpioc, 11),
-        en3:        OutputPin::new(&gpioc, 12),
-        led:        OutputPin::new(&gpioa, 5),
         _private: (),
     }
 }
@@ -151,18 +153,3 @@ impl InputPin {
     }
 }
 
-/// Force on the onboard LED from any context.
-pub fn led_on() {
-    // NOTE(unsafe): Atomic write-only register.
-    unsafe {
-        write_reg!(gpio, GPIOA, BSRR, BS5: 1);
-    }
-}
-
-/// Force off the onboard LED from any context.
-pub fn led_off() {
-    // NOTE(unsafe): Atomic write-only register.
-    unsafe {
-        write_reg!(gpio, GPIOA, BSRR, BR5: 1);
-    }
-}

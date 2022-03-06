@@ -54,7 +54,7 @@ pub fn setup(rcc: rcc::Instance, pwr: pwr::Instance, flash: flash::Instance) -> 
     modify_reg!(rcc, rcc, AHB1ENR, CORDICEN: Enabled, DMA1EN: Enabled, DMAMUXEN: Enabled);
 
     //Enable APB2 peripherals: TIM1
-    modify_reg!(rcc, rcc, APB2ENR, TIM1EN: Enabled);
+    modify_reg!(rcc, rcc, APB2ENR, SYSCFGEN: Enabled, TIM1EN: Enabled);
 
     //Enable AHB2 peripherals: ADC1, ADC2, GPIOA, GPIOC
     modify_reg!(rcc, rcc, AHB2ENR, ADC12EN: Enabled, GPIOAEN: Enabled, GPIOCEN: Enabled);

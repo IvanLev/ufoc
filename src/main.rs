@@ -10,6 +10,8 @@ mod gpio;
 mod adc;
 mod cordic;
 mod dma;
+mod opamp;
+mod tle5012;
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // this prevents the panic message being printed *twice* when `defmt::panic` is invoked
@@ -18,12 +20,12 @@ fn panic() -> ! {
     cortex_m::asm::udf()
 }
 
-#[rtic::app(device=stm32ral::stm32g4::stm32g474, dispatchers=[SAI])]
+#[rtic::app(device=stm32ral::stm32g4::stm32g431, dispatchers=[SAI])]
 mod app {
     use stm32ral::{read_reg, modify_reg, write_reg};
     use stm32ral::adc12_common;
     use crate::{
-        rcc, tim, gpio, cordic, adc, dma,
+        rcc, tim, gpio, cordic, adc, dma, opamp, tle5012,
     };
 
     static mut ADC1BUF: [u16; 8] = [0u16; 8];
@@ -41,6 +43,7 @@ mod app {
         adc2: adc::Adc,
         adc1_dma: dma::DMAChannel,
         adc2_dma: dma::DMAChannel,
+        encoder: tle5012::TLE5012,
         tim1: tim::Tim,
     }
 
@@ -56,12 +59,21 @@ mod app {
         let cordic = cordic::Cordic::new(cx.device.CORDIC);
         cordic.init();
 
-        let pins = gpio::setup(cx.device.GPIOA, cx.device.GPIOB, cx.device.GPIOF,
-                               cx.device.GPIOG);
+        let pins = gpio::setup(cx.device.GPIOA, cx.device.GPIOB,
+                                     cx.device.GPIOF, cx.device.GPIOG);
+
+        let opamp  = opamp::Opamp::new(cx.device.OPAMP);
+        opamp.init();
 
         let tim1 = tim::Tim::from_tim1(cx.device.TIM1);
 
         tim1.setup_bldc_pwm(8500);
+
+        let encoder = tle5012::TLE5012::new(cx.device.SPI1, pins.encoder_nss);
+
+        encoder.init();
+
+        defmt::println!("enc: {}", encoder.read_angle());
 
         let mut adc1 = adc::Adc::new(cx.device.ADC1);
         let mut adc2 = adc::Adc::new(cx.device.ADC2);
@@ -102,6 +114,7 @@ mod app {
              adc2,
              adc1_dma: dma1.c1,
              adc2_dma: dma1.c2,
+             encoder,
              tim1,
          },
 
@@ -115,9 +128,11 @@ mod app {
         }
     }
 
-    #[task(binds=ADC1_2, priority=5, local=[adc1, adc2])]
+    #[task(binds=ADC1_2, priority=5, local=[adc1, adc2, encoder])]
     fn adc_1_2(mut cx: adc_1_2::Context) {
         cx.local.adc1.clear_jeos();
+        defmt::println!("{}, {}", read_reg!(adc, cx.local.adc1.adc, JDR1), read_reg!(adc, cx.local.adc2.adc, JDR1));
+        //defmt::println!("enc: {}", cx.local.encoder.read_angle());
     }
 
     #[task(binds=DMA1_CH1, priority=4, local=[adc1_dma])]

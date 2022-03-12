@@ -18,18 +18,12 @@ impl Adc {
 
         modify_reg!(adc12_common, adc12, CCR, VREFEN: Enabled, DMACFG: 1);
         modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
-        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {
-            defmt::println!("Waiting!");
-        } // Wait for the avrgen
+        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {} // Wait for the avrgen
 
-        for i in 0..10000 {
-            defmt::println!("Delay!");
-        }
+        cortex_m::asm::delay(300_000);
 
         modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {
-            defmt::println!("Calibrating!");
-        } // Wait for the calibration
+        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
 
         self.calc_vref();
 
@@ -40,11 +34,11 @@ impl Adc {
         write_reg!(adc, self.adc, SMPR1, SMP1: Cycles2_5, SMP8: Cycles24_5);
 
         //set  regular sequence to just Temp
-        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 8, SQ2: 8, SQ3: 8, SQ4: 8);
-        write_reg!(adc, self.adc, SQR2, SQ5: 8, SQ6: 8, SQ7: 8, SQ8: 8);
+        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 3, SQ2: 3, SQ3: 3, SQ4: 3);
+        write_reg!(adc, self.adc, SQR2, SQ5: 3, SQ6: 3, SQ7: 3, SQ8: 3);
 
         // Set current injected channels
-        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge, JSQ1: 1, JSQ2: 1);
+        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge, JSQ1: 13, JSQ2: 13);
 
         modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
 
@@ -56,18 +50,12 @@ impl Adc {
         modify_reg!(adc, self.adc, CR, DEEPPWD: Disabled);
 
         modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
-        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {
-            defmt::println!("Waiting!");
-        } // Wait for the avrgen
+        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {} // Wait for the avrgen
 
-        for i in 0..10000 {
-            defmt::println!("Delay!");
-        }
+        cortex_m::asm::delay(300_000);
 
         modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {
-            defmt::println!("Calibrating!");
-        } // Wait for the calibration
+        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
 
         write_reg!(adc, self.adc, CFGR, JQDIS: Enabled, DMAEN: Enabled, DMACFG: Circular);
         write_reg!(adc, self.adc, CFGR2, 0);
@@ -76,12 +64,12 @@ impl Adc {
         write_reg!(adc, self.adc, SMPR1, SMP7: Cycles2_5, SMP2: Cycles24_5);
 
         //set  regular sequence to just VM
-        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 2, SQ2: 2, SQ3: 2, SQ4: 2);
-        write_reg!(adc, self.adc, SQR2, SQ5: 2, SQ6: 2, SQ7: 2, SQ8: 2);
+        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 1, SQ2: 1, SQ3: 1, SQ4: 1);
+        write_reg!(adc, self.adc, SQR2, SQ5: 1, SQ6: 1, SQ7: 1, SQ8: 1);
 
         // Set current injected channels
         write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge,
-                                        JSQ1: 7, JSQ2: 7);
+                                        JSQ1: 16, JSQ2: 16);
 
         modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
     }
@@ -135,8 +123,6 @@ impl Adc {
 
         self.vref_cal = vref_int / ( ( vref_sum / f32::from(ADC_SMPLS) ) / FLT_MAXCNT );
 
-        defmt::println!("VREF_CAL {}: ", self.vref_cal);
-
         write_reg!(adc, self.adc, SMPR2, temp_smpr2);
         write_reg!(adc, self.adc, SQR1 , temp_sqr1);
         write_reg!(adc, self.adc, CFGR , temp_cfgr);
@@ -158,9 +144,7 @@ impl Adc {
             modify_reg!(adc, self.adc, ISR, ADRDY: Clear);
             modify_reg!(adc, self.adc, CR, ADEN: Enable);
 
-            while read_reg!(adc, self.adc, ISR, ADRDY == 0) {
-                defmt::println!("Enabling!");
-            }
+            while read_reg!(adc, self.adc, ISR, ADRDY == 0) {}
         }
     }
 

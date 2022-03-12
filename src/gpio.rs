@@ -10,6 +10,7 @@ type Gpio = gpio::Instance;
 /// including access to switches, the HUB75E interface, and the GPIOs.
 #[allow(clippy::manual_non_exhaustive)]
 pub struct Pins {
+    pub encoder_nss: OutputPin,
     _private: (),
 }
 
@@ -50,17 +51,18 @@ pub fn setup(gpioa: Gpio, gpiob: Gpio, gpiof: Gpio, gpiog: Gpio) -> Pins {
     // GPIOB
     // PB0:  GPIO EN
     // PB1-2: Not on chip
-    // PB3:  Encoder something
+    // PB3:  Encoder SCK
     // PB4:  Encoder something
     // PB5:  Encoder something
     // PB6:  Encoder something
     // PB7:  Encoder something
-    // PB8:  Encoder something
+    // PB8:  Encoder NSS
     // PB9-15: Not on chip
     write_reg!(gpio, gpiob, ODR, 0);
-    write_reg!(gpio, gpiob, MODER, MODER0: Input);
+    write_reg!(gpio, gpiob, MODER, MODER0: Input, MODER3: Alternate,
+                                   MODER5: Alternate, MODER8: Output);
 
-    //write_reg!(gpio, gpiob, AFRH, AFRH13: 6, AFRH14: 6, AFRH15: 4);
+    write_reg!(gpio, gpiob, AFRL, AFRL3: 5, AFRL5: 5);
 
     // GPIOC
     // PC0-15: Not on chip
@@ -78,7 +80,7 @@ pub fn setup(gpioa: Gpio, gpiob: Gpio, gpiof: Gpio, gpiog: Gpio) -> Pins {
     write_reg!(gpio, gpiof, ODR, 0);
     write_reg!(gpio, gpiof, MODER, MODER0: Alternate, MODER1: Input);
 
-    write_reg!(gpio, gpiob, AFRL, AFRL0: 6);
+    write_reg!(gpio, gpiof, AFRL, AFRL0: 6);
 
     // GPIOG
     // PE0-9: Not on chip
@@ -87,6 +89,7 @@ pub fn setup(gpioa: Gpio, gpiob: Gpio, gpiof: Gpio, gpiog: Gpio) -> Pins {
     write_reg!(gpio, gpiog, ODR, 0);
 
     Pins {
+        encoder_nss:  OutputPin::new(&gpiob, 8),
         _private: (),
     }
 }

@@ -92,12 +92,12 @@ impl Tim {
         write_reg!(tim1, self.tim, BDTR, DTG: 85, OSSI: 1);
 
         //Setup PWM to 0% and set trigger channels
-        //write_reg!(tim1, self.tim, CCR1, 0);
-        //write_reg!(tim1, self.tim, CCR2, 0);
-        //write_reg!(tim1, self.tim, CCR3, 0);
-        write_reg!(tim1, self.tim, CCR1, period/4);
-        write_reg!(tim1, self.tim, CCR2, period/2);
-        write_reg!(tim1, self.tim, CCR3, 3*(period/4));
+        write_reg!(tim1, self.tim, CCR1, 0);
+        write_reg!(tim1, self.tim, CCR2, 0);
+        write_reg!(tim1, self.tim, CCR3, 0);
+        //write_reg!(tim1, self.tim, CCR1, period/4);
+        //write_reg!(tim1, self.tim, CCR2, period/2);
+        //write_reg!(tim1, self.tim, CCR3, 3*(period/4));
         write_reg!(tim1, self.tim, CCR4, period - 2); //Triggers when downcounting, after reload
         write_reg!(tim1, self.tim, CCR5, 1); //Triggers when downcounting, before zero
 

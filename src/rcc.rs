@@ -38,7 +38,7 @@ pub fn setup(rcc: rcc::Instance, pwr: pwr::Instance, flash: flash::Instance) -> 
                                   PLLR: Div2,
                                   PLLREN: 1,
                                   PLLPEN: 1,
-                                  PLLPDIV: Div2);
+                                  PLLPDIV: Div4);
     modify_reg!(rcc, rcc, CR, PLLON: On); // Turn on PLL
     while read_reg!(rcc, rcc, CR, PLLRDY != 1) {} // Wait for PLL to turn on
     modify_reg!(rcc, rcc, CFGR, SW: PLL); // Switch to PLL as system clock

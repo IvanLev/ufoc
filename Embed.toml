@@ -8,11 +8,11 @@ restore_unwritten_bytes = false
 
 [default.rtt]
 # Whether or not an RTTUI should be opened after flashing.
-enabled = false
+enabled = true
 # A list of channel associations to be displayed. If left empty, all channels are displayed.
 # formats are: String, Defmt, BinaryLE,
 channels = [
-    # { up = 0, down = 0, name = "name", format = "String" },
+    { up = 0, name = "defmt_name", format = "Defmt" },
 
     # How to enable Defmt formatting (https://github.com/knurling-rs/defmt)
     # (formats on host, not on microcontroller)?
@@ -27,7 +27,7 @@ show_timestamps = true
 [default.general]
 chip = "STM32G431KBUx"
 chip_descriptions = []
-log_level = "Warn"
+log_level = "Info"
 
 [default.gdb]
 # Whether or not a GDB server should be opened after flashing.

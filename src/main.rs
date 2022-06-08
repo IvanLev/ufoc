@@ -84,7 +84,12 @@ mod app {
 
         adc1.setup_adc1(adc12);
         adc2.setup_adc2();
+
+        //let zero1 = adc1.get_avg_reading(13);
+        //let zero2 = adc1.get_avg_reading(16);
+
         defmt::println!("ADC init done");
+
 
         let dmamux = dma::DMAMux::new(cx.device.DMAMUX);
         let dma1 = dma::DMA::new(cx.device.DMA1);
@@ -130,9 +135,10 @@ mod app {
 
     #[task(binds=ADC1_2, priority=5, local=[adc1, adc2, encoder])]
     fn adc_1_2(mut cx: adc_1_2::Context) {
+        //defmt::println!("inj: {}, {}", cx.local.adc1.get_inj_data() - cx.shared.zero1, cx.local.adc2.get_inj_data() - cx.shared.zero2);
+        //defmt::println!("inj: {}, {}", cx.shared.zero1, cx.shared.zero2);
         cx.local.adc1.clear_jeos();
-        defmt::println!("{}, {}", read_reg!(adc, cx.local.adc1.adc, JDR1), read_reg!(adc, cx.local.adc2.adc, JDR1));
-        //defmt::println!("enc: {}", cx.local.encoder.read_angle());
+        defmt::println!("                  enc: {}", cx.local.encoder.read_angle());
     }
 
     #[task(binds=DMA1_CH1, priority=4, local=[adc1_dma])]
@@ -143,6 +149,7 @@ mod app {
     #[task(binds=DMA1_CH2, priority=3, local=[adc2_dma])]
     fn dma1_ch2(mut cx: dma1_ch2::Context) {
         cx.local.adc2_dma.clear_tcif();
+    //    defmt::println!("ADC2 regular channels: {}", unsafe { ADC1BUF});
     }
 
     //#[task(binds=TIM1_UP_TIM16, priority=3, local=[tim1])]

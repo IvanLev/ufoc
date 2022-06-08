@@ -21,12 +21,12 @@ pub struct Pins {
 
 pub fn setup(gpioa: Gpio, gpiob: Gpio, gpiof: Gpio, gpiog: Gpio) -> Pins {
     // GPIOA
-    // PA0:  Analog Input voltage divider ADC1_IN1 (BLDC Phase current I_A ADC1_IN1)
+    // PA0:  Analog Input voltage divider ADC2_IN1
     // PA1:  Analog OPAMP1_VINP (Input voltage divider ADC2_IN2)
-    // PA2:  Analog PCB/FET temperature sensor ADC1_IN8
+    // PA2:  Analog PCB/FET temperature sensor ADC1_IN3
     // PA3:  Analog OPAMP1_VINM0
     // PA4:  GPIO DIR
-    // PA5:  Analog OPAMP2_VINM0 (Output, Nucleo LED)
+    // PA5:  Analog OPAMP2_VINM0
     // PA6:  GPIO STEP
     // PA7:  Analog OPAMP2_VINP
     // PA8:  AF6 PWM BLDC U_H

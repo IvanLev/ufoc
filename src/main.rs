@@ -22,7 +22,7 @@ fn panic() -> ! {
 
 #[rtic::app(device=stm32ral::stm32g4::stm32g431, dispatchers=[SAI])]
 mod app {
-    use stm32ral::{read_reg, modify_reg, write_reg};
+    use stm32ral::modify_reg;
     use stm32ral::adc12_common;
     use crate::{
         rcc, tim, gpio, cordic, adc, dma, opamp, tle5012,
@@ -52,7 +52,7 @@ mod app {
 
         defmt::println!("Start");
 
-        let clocks = rcc::setup(cx.device.RCC, cx.device.PWR, cx.device.FLASH);
+        let _clocks = rcc::setup(cx.device.RCC, cx.device.PWR, cx.device.FLASH);
 
         cx.core.SCB.enable_icache();
 
@@ -76,9 +76,9 @@ mod app {
         defmt::println!("enc: {}", encoder.read_angle());
 
         let mut adc1 = adc::Adc::new(cx.device.ADC1);
-        let mut adc2 = adc::Adc::new(cx.device.ADC2);
+        let adc2 = adc::Adc::new(cx.device.ADC2);
 
-        let mut adc12 = cx.device.ADC12_Common;
+        let adc12 = cx.device.ADC12_Common;
 
         modify_reg!(adc12_common, adc12, CCR, DUAL: DualRJ);
 
@@ -134,20 +134,22 @@ mod app {
     }
 
     #[task(binds=ADC1_2, priority=5, local=[adc1, adc2, encoder])]
-    fn adc_1_2(mut cx: adc_1_2::Context) {
+    fn adc_1_2(cx: adc_1_2::Context) {
         //defmt::println!("inj: {}, {}", cx.local.adc1.get_inj_data() - cx.shared.zero1, cx.local.adc2.get_inj_data() - cx.shared.zero2);
         //defmt::println!("inj: {}, {}", cx.shared.zero1, cx.shared.zero2);
-        cx.local.adc1.clear_jeos();
-        defmt::println!("                  enc: {}", cx.local.encoder.read_angle());
+        if cx.local.adc1.read_jeos() {
+            cx.local.adc1.clear_jeos();
+            defmt::println!("{}", cx.local.encoder.read_angle());
+        }
     }
 
     #[task(binds=DMA1_CH1, priority=4, local=[adc1_dma])]
-    fn dma1_ch1(mut cx: dma1_ch1::Context) {
+    fn dma1_ch1(cx: dma1_ch1::Context) {
         cx.local.adc1_dma.clear_tcif();
     }
 
     #[task(binds=DMA1_CH2, priority=3, local=[adc2_dma])]
-    fn dma1_ch2(mut cx: dma1_ch2::Context) {
+    fn dma1_ch2(cx: dma1_ch2::Context) {
         cx.local.adc2_dma.clear_tcif();
     //    defmt::println!("ADC2 regular channels: {}", unsafe { ADC1BUF});
     }

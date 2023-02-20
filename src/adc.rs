@@ -117,7 +117,7 @@ impl Adc {
 
         let mut vref_sum : f32 = 0.0;
         for _i in 0..ADC_SMPLS {
-            modify_reg!(adc, self.adc, CR, ADSTART: Start);
+            modify_reg!(adc, self.adc, CR, ADSTART: StartConversion);
             while read_reg!(adc, self.adc, ISR, EOC != 1) {}
             modify_reg!(adc, self.adc, ISR, EOC: Clear);
             vref_sum = vref_sum + (read_reg!(adc, self.adc, DR) as f32);
@@ -155,7 +155,7 @@ impl Adc {
 
         let mut res_sum : f32 = 0.0;
         for _i in 0..ADC_SMPLS {
-            modify_reg!(adc, self.adc, CR, ADSTART: Start);
+            modify_reg!(adc, self.adc, CR, ADSTART: StartConversion);
             while read_reg!(adc, self.adc, ISR, EOC != 1) {}
             modify_reg!(adc, self.adc, ISR, EOC: Clear);
             res_sum = res_sum + (read_reg!(adc, self.adc, DR) as f32);
@@ -171,7 +171,7 @@ impl Adc {
 
     pub fn start(&self) {
         self.enable();
-        modify_reg!(adc, self.adc, CR, ADSTART: Start, JADSTART: Start);
+        modify_reg!(adc, self.adc, CR, ADSTART: StartConversion, JADSTART: StartConversion);
     }
 
     pub fn dr(&self) -> u32 {
@@ -181,7 +181,7 @@ impl Adc {
     fn enable(&self) {
         if read_reg!(adc, self.adc, CR, ADEN == 0) {
             modify_reg!(adc, self.adc, ISR, ADRDY: Clear);
-            modify_reg!(adc, self.adc, CR, ADEN: Enable);
+            modify_reg!(adc, self.adc, CR, ADEN: Enabled);
 
             while read_reg!(adc, self.adc, ISR, ADRDY == 0) {}
         }
@@ -191,6 +191,8 @@ impl Adc {
     pub fn clear_jeos(&self) {
         write_reg!(adc, self.adc, ISR, JEOS: Clear);
     }
+
+    pub fn read_jeos(&self) -> bool { read_reg!(adc, self.adc, ISR, JEOS == 1) }
 
     pub fn get_inj_data(&self) -> u16{
         read_reg!(adc, self.adc, JDR1) as u16

@@ -1,17 +1,11 @@
 #![no_main]
 #![no_std]
 
+mod tim;
+mod dma;
+
 use defmt_rtt as _; // global logger
 use panic_probe as _;
-
-mod tim;
-mod rcc;
-mod gpio;
-mod adc;
-mod cordic;
-mod dma;
-mod opamp;
-mod tle5012;
 
 // same panicking *behavior* as `panic-probe` but doesn't print a panic message
 // this prevents the panic message being printed *twice* when `defmt::panic` is invoked
@@ -20,17 +14,11 @@ fn panic() -> ! {
     cortex_m::asm::udf()
 }
 
-#[rtic::app(device=stm32ral::stm32g4::stm32g431, dispatchers=[SAI])]
+#[rtic::app(device = stm32g4xx_hal::stm32, peripherals = true, dispatchers=[SAI])]
 mod app {
-    use stm32ral::modify_reg;
-    use stm32ral::adc12_common;
-    use crate::{
-        rcc, tim, gpio, cordic, adc, dma, opamp, tle5012,
-    };
-
-    static mut ADC1BUF: [u16; 8] = [0u16; 8];
-
-    static mut ADC2BUF: [u16; 8] = [0u16; 8];
+    use stm32g4xx_hal::rcc::Config;
+    use stm32g4xx_hal::prelude::*;
+    use crate::tim::PwmTim;
 
     #[shared]
     struct Shared {
@@ -38,75 +26,44 @@ mod app {
 
     #[local]
     struct Local {
-        cordic: cordic::Cordic,
-        adc1: adc::Adc,
-        adc2: adc::Adc,
-        adc1_dma: dma::DMAChannel,
-        adc2_dma: dma::DMAChannel,
-        encoder: tle5012::TLE5012,
-        tim1: tim::Tim,
     }
 
     #[init]
-    fn init(mut cx: init::Context) -> (Shared, Local, init::Monotonics) {
-
+    fn init(mut ctx: init::Context) -> (Shared, Local, init::Monotonics) {
         defmt::println!("Start");
 
-        let _clocks = rcc::setup(cx.device.RCC, cx.device.PWR, cx.device.FLASH);
+        let rcc = ctx.device.RCC.constrain();
+        let mut rcc = rcc.freeze(Config::pll());
 
-        cx.core.SCB.enable_icache();
+        ctx.core.SCB.enable_icache();
 
-        let cordic = cordic::Cordic::new(cx.device.CORDIC);
-        cordic.init();
+        //TODO:Enable and init cordic
 
-        let pins = gpio::setup(cx.device.GPIOA, cx.device.GPIOB,
-                                     cx.device.GPIOF, cx.device.GPIOG);
+        defmt::println!("Setup Gpio");
+        let gpioa = ctx.device.GPIOA.split(&mut rcc);
+        let gpiob = ctx.device.GPIOB.split(&mut rcc);
+        let gpiof = ctx.device.GPIOF.split(&mut rcc);
+        let gpiog = ctx.device.GPIOG.split(&mut rcc);
 
-        let opamp  = opamp::Opamp::new(cx.device.OPAMP);
-        opamp.init();
+        //TODO: Figure out what to do with gpio pins
 
-        let tim1 = tim::Tim::from_tim1(cx.device.TIM1);
+        //TODO: Setup OpAmp. To do it with HAL?
 
-        tim1.setup_bldc_pwm(8500);
+        defmt::println!("Setup TIM1PWM");
+        let t1 = ctx.device.TIM1;
+        let pwmTimer = PwmTim::new(t1);
+        pwmTimer.setup_bldc_pwm(8500);
+        pwmTimer.set_bldc_pwm(0, 0, 0);
 
-        let encoder = tle5012::TLE5012::new(cx.device.SPI1, pins.encoder_nss);
+        //TODO: Init and enable encoder
 
-        encoder.init();
+        //TODO: Init and enable ADC
 
-        defmt::println!("enc: {}", encoder.read_angle());
+        //TODO: Init and enable DMA
 
-        let mut adc1 = adc::Adc::new(cx.device.ADC1);
-        let adc2 = adc::Adc::new(cx.device.ADC2);
+        pwmTimer.motor_on();
 
-        let adc12 = cx.device.ADC12_Common;
-
-        modify_reg!(adc12_common, adc12, CCR, DUAL: DualRJ);
-
-        adc1.setup_adc1(adc12);
-        adc2.setup_adc2();
-
-        //let zero1 = adc1.get_avg_reading(13);
-        //let zero2 = adc1.get_avg_reading(16);
-
-        defmt::println!("ADC init done");
-
-
-        let dmamux = dma::DMAMux::new(cx.device.DMAMUX);
-        let dma1 = dma::DMA::new(cx.device.DMA1);
-
-        dmamux.set(0, 5);
-        dmamux.set(1, 36);
-
-        dma1.c1.setup_adc_circ(adc1.dr());
-        dma1.c2.setup_adc_circ(adc2.dr());
-
-        dma1.c1.start_adc_rx(unsafe { &mut ADC1BUF[..]});
-        dma1.c2.start_adc_rx(unsafe { &mut ADC2BUF[..]});
-
-        tim1.motor_on();
-
-        adc1.start();
-        adc2.start();
+        //TODO: Start ADC1 and ADC2
 
         defmt::println!("Init done!");
 
@@ -114,13 +71,6 @@ mod app {
         },
 
          Local {
-            cordic,
-             adc1,
-             adc2,
-             adc1_dma: dma1.c1,
-             adc2_dma: dma1.c2,
-             encoder,
-             tim1,
          },
 
          init::Monotonics())
@@ -133,25 +83,25 @@ mod app {
         }
     }
 
-    #[task(binds=ADC1_2, priority=5, local=[adc1, adc2, encoder])]
+    #[task(binds=ADC1_2, priority=5)]//, local=[adc1, adc2, encoder])]
     fn adc_1_2(cx: adc_1_2::Context) {
         //defmt::println!("inj: {}, {}", cx.local.adc1.get_inj_data() - cx.shared.zero1, cx.local.adc2.get_inj_data() - cx.shared.zero2);
         //defmt::println!("inj: {}, {}", cx.shared.zero1, cx.shared.zero2);
-        if cx.local.adc1.read_jeos() {
-            cx.local.adc1.clear_jeos();
-            defmt::println!("{}", cx.local.encoder.read_angle());
-        }
+        //if cx.local.adc1.read_jeos() {
+        //    cx.local.adc1.clear_jeos();
+        //    defmt::println!("{}", cx.local.encoder.read_angle());
+        //}
     }
 
-    #[task(binds=DMA1_CH1, priority=4, local=[adc1_dma])]
+    #[task(binds=DMA1_CH1, priority=4)]//, local=[adc1_dma])]
     fn dma1_ch1(cx: dma1_ch1::Context) {
-        cx.local.adc1_dma.clear_tcif();
+        //cx.local.adc1_dma.clear_tcif();
     }
 
-    #[task(binds=DMA1_CH2, priority=3, local=[adc2_dma])]
+    #[task(binds=DMA1_CH2, priority=3)]//, local=[adc2_dma])]
     fn dma1_ch2(cx: dma1_ch2::Context) {
-        cx.local.adc2_dma.clear_tcif();
-    //    defmt::println!("ADC2 regular channels: {}", unsafe { ADC1BUF});
+        //cx.local.adc2_dma.clear_tcif();
+        //    defmt::println!("ADC2 regular channels: {}", unsafe { ADC1BUF});
     }
 
     //#[task(binds=TIM1_UP_TIM16, priority=3, local=[tim1])]

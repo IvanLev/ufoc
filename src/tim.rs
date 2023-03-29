@@ -13,6 +13,10 @@ pub struct PwmTim {
 }
 
 impl PwmTim {
+    /// Create a new timer driver.
+    pub fn new(tim: TIM1) -> Self {
+        Self { tim }
+    }
 
     /// Start the timer running by setting the CEN bit.
     pub fn start(&self) {

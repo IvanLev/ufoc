@@ -36,6 +36,7 @@ mod app {
         let mut rcc = rcc.freeze(Config::pll());
 
         ctx.core.SCB.enable_icache();
+        ctx.core.SCB.enable_dcache(&mut ctx.core.CPUID);
 
         //TODO:Enable and init cordic
 

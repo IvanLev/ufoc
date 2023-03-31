@@ -3,6 +3,8 @@
 
 mod tim;
 mod dma;
+mod opamp;
+mod gpio;
 
 use defmt_rtt as _; // global logger
 use panic_probe as _;
@@ -19,6 +21,8 @@ mod app {
     use stm32g4xx_hal::rcc::Config;
     use stm32g4xx_hal::prelude::*;
     use crate::tim::PwmTim;
+    use crate::opamp::Opamp;
+    use crate::gpio;
 
     #[shared]
     struct Shared {
@@ -44,11 +48,13 @@ mod app {
         let gpioa = ctx.device.GPIOA.split(&mut rcc);
         let gpiob = ctx.device.GPIOB.split(&mut rcc);
         let gpiof = ctx.device.GPIOF.split(&mut rcc);
-        let gpiog = ctx.device.GPIOG.split(&mut rcc);
+        //let gpiog = ctx.device.GPIOG.split(&mut rcc);
 
-        //TODO: Figure out what to do with gpio pins
+        //Take all needed pins before giving gpio blocks
+        gpio::setup(gpioa, gpiob, gpiof);
 
-        //TODO: Setup OpAmp. To do it with HAL?
+        let opamp = Opamp::new(ctx.device.OPAMP);
+        opamp.init();
 
         defmt::println!("Setup TIM1PWM");
         let t1 = ctx.device.TIM1;

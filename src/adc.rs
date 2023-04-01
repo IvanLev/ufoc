@@ -1,79 +1,64 @@
-use stm32ral::{modify_reg, write_reg, read_reg};
-use stm32ral::{adc, adc12_common};
+use stm32g4xx_hal::stm32::{ADC1, ADC2, ADC12_COMMON};
+use stm32g4xx_hal::stm32::adc1::smpr1::SMP0_A::{Cycles245};
+use stm32g4xx_hal::stm32::adc1::smpr2::SMP16_A::{Cycles25};
+use stm32g4xx_hal::stm32::adc1::smpr2::SMP18_A::{Cycles2475};
+use stm32g4xx_hal::stm32::adc1::jsqr::{JEXTSEL_A, JEXTEN_A};
+use stm32g4xx_hal::stm32::adc1::cfgr::{OVRMOD_A, EXTSEL_A, EXTEN_A};
+use stm32g4xx_hal::stm32::adc12_common::ccr::{DUAL_A};
 
-pub struct Adc {
-    adc: adc::Instance,
+pub struct Adc1 {
+    adc: ADC1,
     vref_cal: f32,
 }
 
-impl Adc {
-    pub fn new(adc: adc::Instance) -> Self {
+pub struct Adc2 {
+    adc: ADC2,
+    vref_cal: f32,
+}
+
+impl Adc1 {
+    pub fn new(adc: ADC1) -> Self {
         Self { adc, vref_cal: 0.0 }
     }
 
-    pub fn setup_adc1(&mut self, adc12: stm32ral::adc12_common::Instance) {
+    pub fn setup(&mut self, adc12: ADC12_COMMON) {
+        self.adc.cr.modify(|_, w| w.deeppwd().clear_bit());
 
+        adc12.ccr.modify(|_, w| w.dual().variant(DUAL_A::DualRj));
 
-        modify_reg!(adc, self.adc, CR, DEEPPWD: Disabled);
-
-        modify_reg!(adc12_common, adc12, CCR, VREFEN: Enabled, DMACFG: 1);
-        modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
-        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {} // Wait for the avrgen
+        adc12.ccr.modify(|_, w| w.vrefen().set_bit().dmacfg().set_bit());
+        self.adc.cr.modify(|_, w| w.advregen().enabled());
+        while self.adc.cr.read().advregen().bit_is_clear() {} // Wait for the avrgen
 
         cortex_m::asm::delay(300_000);
 
-        modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
+        self.adc.cr.modify(|_, w| w.adcal().set_bit().adcaldif().single_ended());
+        while self.adc.cr.read().adcal().bit_is_set() {} // Wait for the calibration
 
         self.calc_vref();
 
-        write_reg!(adc, self.adc, CFGR, JQDIS: Disabled, DMAEN: Enabled, DMACFG: Circular);
-        write_reg!(adc, self.adc, CFGR2, 0);
+        self.adc.cfgr.write(|w| w.jqdis().disabled().dmaen().enabled().dmacfg().circular());
+        self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
 
         //set sampling time for I_A and Temp
-        write_reg!(adc, self.adc, SMPR1, SMP3: Cycles24_5);
-        write_reg!(adc, self.adc, SMPR2, SMP13: Cycles2_5);
+        self.adc.smpr1.write(|w| w.smp3().variant(Cycles245));
+        self.adc.smpr2.write(|w| w.smp13().variant(Cycles25));
 
         //set  regular sequence to just Temp
-        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 3, SQ2: 3, SQ3: 3, SQ4: 3);
-        write_reg!(adc, self.adc, SQR2, SQ5: 3, SQ6: 3, SQ7: 3, SQ8: 3);
+        self.adc.sqr1.write(|w| w.l().variant(7).sq1().variant(3).sq2().variant(3)
+            .sq3().variant(3).sq4().variant(3));
+        self.adc.sqr2.write(|w| w.sq5().variant(3).sq6().variant(3)
+            .sq7().variant(3).sq8().variant(3));
 
         // Set current injected channels
-        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge, JSQ1: 13, JSQ2: 13);
+        self.adc.jsqr.write(|w| w.jl().variant(1).jextsel().variant(JEXTSEL_A::Tim1Trgo)
+            .jexten().variant(JEXTEN_A::RisingEdge).jsq1().variant(13).jsq2().variant(13));
 
-        modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
+        self.adc.cfgr.modify(|_, w| w.ovrmod().overwrite()
+            .extsel().variant(EXTSEL_A::Tim1Trgo2).exten().variant(EXTEN_A::RisingEdge));
 
-        modify_reg!(adc, self.adc, IER, JEOSIE: Enabled);
+        self.adc.ier.modify(|_, w| w.jeosie().enabled());
 
-    }
-
-    pub fn setup_adc2(&self) {
-        modify_reg!(adc, self.adc, CR, DEEPPWD: Disabled);
-
-        modify_reg!(adc, self.adc, CR, ADVREGEN: Enabled);
-        while read_reg!(adc, self.adc, CR, ADVREGEN != 1) {} // Wait for the avrgen
-
-        cortex_m::asm::delay(300_000);
-
-        modify_reg!(adc, self.adc, CR, ADCAL: Calibration, ADCALDIF: SingleEnded);
-        while read_reg!(adc, self.adc, CR, ADCAL != 0) {} // Wait for the calibration
-
-        write_reg!(adc, self.adc, CFGR, JQDIS: Disabled, DMAEN: Enabled, DMACFG: Circular);
-        write_reg!(adc, self.adc, CFGR2, 0);
-
-        // Set sampling time for I_B and VM
-        write_reg!(adc, self.adc, SMPR1, SMP4: Cycles24_5);
-        write_reg!(adc, self.adc, SMPR2, SMP16: Cycles2_5);
-
-        //set  regular sequence to just VM
-        write_reg!(adc, self.adc, SQR1, L: 7, SQ1: 1, SQ2: 1, SQ3: 1, SQ4: 1);
-        write_reg!(adc, self.adc, SQR2, SQ5: 1, SQ6: 1, SQ7: 1, SQ8: 1);
-
-        // Set current injected channels
-        write_reg!(adc, self.adc, JSQR, JL: 0b1, JEXTSEL: TIM1_TRGO, JEXTEN: RisingEdge,
-                                        JSQ1: 16, JSQ2: 16);
-
-        modify_reg!(adc, self.adc, CFGR, OVRMOD: Overwrite, EXTSEL: TIM1_TRGO2, EXTEN: RisingEdge);
     }
     
     fn calc_vref(&mut self) {
@@ -84,17 +69,17 @@ impl Adc {
         const VREFINT_CAL_DEF : f32 = 1.212;
         const ADC_SMPLS : u16 = 128;
 
-        let temp_smpr2 = read_reg!(adc, self.adc, SMPR2);
-        let temp_sqr1 = read_reg!(adc, self.adc, SQR1);
-        let temp_cfgr = read_reg!(adc, self.adc, CFGR);
-        let temp_cfgr2 = read_reg!(adc, self.adc, CFGR2);
-        let temp_ier = read_reg!(adc, self.adc, IER);
+        let temp_smpr2 = self.adc.smpr2.read().bits();
+        let temp_sqr1 = self.adc.sqr1.read().bits();
+        let temp_cfgr = self.adc.cfgr.read().bits();
+        let temp_cfgr2 = self.adc.cfgr2.read().bits();
+        let temp_ier = self.adc.ier.read().bits();
 
-        write_reg!(adc, self.adc, SMPR2, 0);
-        write_reg!(adc, self.adc, SQR1 , 0);
-        write_reg!(adc, self.adc, CFGR , 0);
-        write_reg!(adc, self.adc, CFGR2, 0);
-        write_reg!(adc, self.adc, IER  , 0);
+        self.adc.smpr2.write(|w| unsafe {w.bits(0)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
+        self.adc.ier.write(|w| unsafe {w.bits(0)});
 
         let mut vref_int : f32 = 0.0;
         let vref_cal : u16;
@@ -112,89 +97,181 @@ impl Adc {
         self.enable();
 
         // Set sampling time for Vrefint
-        write_reg!(adc, self.adc, SMPR2, SMP18: Cycles247_5);
-        write_reg!(adc, self.adc, SQR1, SQ1: 18);
+        self.adc.smpr2.write(|w| w.smp18().variant(Cycles2475));
+        self.adc.sqr1.write(|w| w.sq1().variant(18));
 
         let mut vref_sum : f32 = 0.0;
         for _i in 0..ADC_SMPLS {
-            modify_reg!(adc, self.adc, CR, ADSTART: StartConversion);
-            while read_reg!(adc, self.adc, ISR, EOC != 1) {}
-            modify_reg!(adc, self.adc, ISR, EOC: Clear);
-            vref_sum = vref_sum + (read_reg!(adc, self.adc, DR) as f32);
+            self.adc.cr.modify(|_, w| w.adstart().set_bit());
+            while self.adc.isr.read().eoc().bit_is_clear() {}
+            self.adc.isr.modify(|_, w| w.eoc().clear_bit());
+            vref_sum = vref_sum + (self.adc.dr.read().bits() as f32);
         }
 
         self.vref_cal = vref_int / ( ( vref_sum / f32::from(ADC_SMPLS) ) / FLT_MAXCNT );
 
-        write_reg!(adc, self.adc, SMPR2, temp_smpr2);
-        write_reg!(adc, self.adc, SQR1 , temp_sqr1);
-        write_reg!(adc, self.adc, CFGR , temp_cfgr);
-        write_reg!(adc, self.adc, CFGR2, temp_cfgr2);
-        write_reg!(adc, self.adc, IER  , temp_ier);
+        self.adc.smpr2.write(|w| unsafe {w.bits(temp_smpr2)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(temp_sqr1)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(temp_cfgr)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(temp_cfgr2)});
+        self.adc.ier.write(|w| unsafe {w.bits(temp_ier)});
     }
 
     pub fn get_avg_reading(&mut self, chan: u16) -> u16 {
         const ADC_SMPLS : u16 = 64;
 
-        let temp_smpr2 = read_reg!(adc, self.adc, SMPR2);
-        let temp_sqr1 = read_reg!(adc, self.adc, SQR1);
-        let temp_cfgr = read_reg!(adc, self.adc, CFGR);
-        let temp_cfgr2 = read_reg!(adc, self.adc, CFGR2);
-        let temp_ier = read_reg!(adc, self.adc, IER);
+        let temp_smpr2 = self.adc.smpr2.read().bits();
+        let temp_sqr1 = self.adc.sqr1.read().bits();
+        let temp_cfgr = self.adc.cfgr.read().bits();
+        let temp_cfgr2 = self.adc.cfgr2.read().bits();
+        let temp_ier = self.adc.ier.read().bits();
 
-        write_reg!(adc, self.adc, SMPR2, 0);
-        write_reg!(adc, self.adc, SQR1 , 0);
-        write_reg!(adc, self.adc, CFGR , 0);
-        write_reg!(adc, self.adc, CFGR2, 0);
-        write_reg!(adc, self.adc, IER  , 0);
+        self.adc.smpr2.write(|w| unsafe {w.bits(0)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
+        self.adc.ier.write(|w| unsafe {w.bits(0)});
 
         self.enable();
 
         // Set sampling time
-        write_reg!(adc, self.adc, SMPR2, SMP18: Cycles247_5);
-        write_reg!(adc, self.adc, SQR1, SQ1: chan as u32);
+        self.adc.smpr2.write(|w| w.smp18().variant(Cycles2475));
+        self.adc.sqr1.write(|w| w.sq1().variant(chan as u8));
 
         let mut res_sum : f32 = 0.0;
         for _i in 0..ADC_SMPLS {
-            modify_reg!(adc, self.adc, CR, ADSTART: StartConversion);
-            while read_reg!(adc, self.adc, ISR, EOC != 1) {}
-            modify_reg!(adc, self.adc, ISR, EOC: Clear);
-            res_sum = res_sum + (read_reg!(adc, self.adc, DR) as f32);
+            self.adc.cr.modify(|_, w| w.adstart().set_bit());
+            while self.adc.isr.read().eoc().bit_is_clear() {}
+            self.adc.isr.modify(|_, w| w.eoc().clear_bit());
+            res_sum = res_sum + (self.adc.dr.read().bits() as f32);
         }
 
-        write_reg!(adc, self.adc, SMPR2, temp_smpr2);
-        write_reg!(adc, self.adc, SQR1 , temp_sqr1);
-        write_reg!(adc, self.adc, CFGR , temp_cfgr);
-        write_reg!(adc, self.adc, CFGR2, temp_cfgr2);
-        write_reg!(adc, self.adc, IER  , temp_ier);
+        self.adc.smpr2.write(|w| unsafe {w.bits(temp_smpr2)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(temp_sqr1)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(temp_cfgr)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(temp_cfgr2)});
+        self.adc.ier.write(|w| unsafe {w.bits(temp_ier)});
         (res_sum / f32::from(ADC_SMPLS)) as u16
     }
 
     pub fn start(&self) {
         self.enable();
-        modify_reg!(adc, self.adc, CR, ADSTART: StartConversion, JADSTART: StartConversion);
+        self.adc.cr.modify(|_, w| w.adstart().set_bit().jadstart().set_bit());
     }
 
-    pub fn dr(&self) -> u32 {
-        &self.adc.DR as *const _ as u32
-    }
+    pub fn dr(&self) -> u32 { &self.adc.dr.read().bits() as *const _ as u32 }
 
     fn enable(&self) {
-        if read_reg!(adc, self.adc, CR, ADEN == 0) {
-            modify_reg!(adc, self.adc, ISR, ADRDY: Clear);
-            modify_reg!(adc, self.adc, CR, ADEN: Enabled);
+        if self.adc.cr.read().aden().bit_is_clear() {
+            self.adc.isr.modify(|_, w| w.adrdy().clear_bit());
+            self.adc.cr.modify(|_, w| w.aden().set_bit());
 
-            while read_reg!(adc, self.adc, ISR, ADRDY == 0) {}
+            while self.adc.isr.read().adrdy().bit_is_clear() {}
         }
     }
 
     // Clear JEOS interrupt flag
-    pub fn clear_jeos(&self) {
-        write_reg!(adc, self.adc, ISR, JEOS: Clear);
+    pub fn clear_jeos(&self) { self.adc.isr.modify(|_, w| w.jeos().clear_bit()); }
+
+    pub fn read_jeos(&self) -> bool { self.adc.isr.read().jeos().bit() }
+
+    pub fn get_inj_data(&self) -> u16{ self.adc.jdr1.read().jdata().bits() as u16 }
+}
+
+impl Adc2 {
+    pub fn new(adc: ADC2) -> Self {
+        Self { adc, vref_cal: 0.0 }
     }
 
-    pub fn read_jeos(&self) -> bool { read_reg!(adc, self.adc, ISR, JEOS == 1) }
+    pub fn setup(&self) {
+        self.adc.cr.modify(|_, w| w.deeppwd().clear_bit());
 
-    pub fn get_inj_data(&self) -> u16{
-        read_reg!(adc, self.adc, JDR1) as u16
+        self.adc.cr.modify(|_, w| w.advregen().set_bit());
+        while self.adc.cr.read().advregen().bit_is_clear() {} // Wait for the avrgen
+
+        cortex_m::asm::delay(300_000);
+
+        self.adc.cr.modify(|_, w| w.adcal().set_bit().adcaldif().single_ended());
+        while self.adc.cr.read().adcal().bit_is_set() {} // Wait for the calibration
+
+        self.adc.cfgr.modify(|_, w| w.jqdis().set_bit().dmaen().set_bit().dmacfg().set_bit());
+        self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
+
+        // Set sampling time for I_B and VM
+        self.adc.smpr1.write(|w| w.smp4().variant(Cycles245));
+        self.adc.smpr2.write(|w| w.smp16().variant(Cycles25));
+
+        //set  regular sequence to just VM
+        self.adc.sqr1.write(|w| w.l().variant(7).sq1().variant(1).sq2().variant(1)
+            .sq3().variant(1).sq4().variant(1));
+        self.adc.sqr2.write(|w| w.sq5().variant(1).sq6().variant(1)
+            .sq7().variant(1).sq8().variant(1));
+
+        // Set current injected channels
+        self.adc.jsqr.write(|w| w.jl().variant(1).jextsel().variant(JEXTSEL_A::Tim1Trgo)
+            .jexten().variant(JEXTEN_A::RisingEdge).jsq1().variant(16).jsq2().variant(16));
+        self.adc.cfgr.modify(|_, w| w.ovrmod().variant(OVRMOD_A::Overwrite)
+            .extsel().variant(EXTSEL_A::Tim1Trgo2).exten().variant(EXTEN_A::RisingEdge));
     }
+
+    pub fn get_avg_reading(&mut self, chan: u16) -> u16 {
+        const ADC_SMPLS : u16 = 64;
+
+        let temp_smpr2 = self.adc.smpr2.read().bits();
+        let temp_sqr1 = self.adc.sqr1.read().bits();
+        let temp_cfgr = self.adc.cfgr.read().bits();
+        let temp_cfgr2 = self.adc.cfgr2.read().bits();
+        let temp_ier = self.adc.ier.read().bits();
+
+        self.adc.smpr2.write(|w| unsafe {w.bits(0)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(0)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
+        self.adc.ier.write(|w| unsafe {w.bits(0)});
+
+        self.enable();
+
+        // Set sampling time
+        self.adc.smpr2.write(|w| w.smp18().variant(Cycles2475));
+        self.adc.sqr1.write(|w| w.sq1().variant(chan as u8));
+
+        let mut res_sum : f32 = 0.0;
+        for _i in 0..ADC_SMPLS {
+            self.adc.cr.modify(|_, w| w.adstart().set_bit());
+            while self.adc.isr.read().eoc().bit_is_clear() {}
+            self.adc.isr.modify(|_, w| w.eoc().clear_bit());
+            res_sum = res_sum + (self.adc.dr.read().bits() as f32);
+        }
+
+        self.adc.smpr2.write(|w| unsafe {w.bits(temp_smpr2)});
+        self.adc.sqr1.write(|w| unsafe {w.bits(temp_sqr1)});
+        self.adc.cfgr.write(|w| unsafe {w.bits(temp_cfgr)});
+        self.adc.cfgr2.write(|w| unsafe {w.bits(temp_cfgr2)});
+        self.adc.ier.write(|w| unsafe {w.bits(temp_ier)});
+        (res_sum / f32::from(ADC_SMPLS)) as u16
+    }
+
+    pub fn start(&self) {
+        self.enable();
+        self.adc.cr.modify(|_, w| w.adstart().set_bit().jadstart().set_bit());
+    }
+
+    pub fn dr(&self) -> u32 { &self.adc.dr.read().bits() as *const _ as u32 }
+
+    fn enable(&self) {
+        //if read_reg!(adc, self.adc, CR, ADEN == 0) {
+        if self.adc.cr.read().aden().bit_is_clear() {
+            self.adc.isr.modify(|_, w| w.adrdy().clear_bit());
+            self.adc.cr.modify(|_, w| w.aden().set_bit());
+
+            while self.adc.isr.read().adrdy().bit_is_clear() {}
+        }
+    }
+
+    // Clear JEOS interrupt flag
+    pub fn clear_jeos(&self) { self.adc.isr.modify(|_, w| w.jeos().clear_bit()); }
+
+    pub fn read_jeos(&self) -> bool { self.adc.isr.read().jeos().bit() }
+
+    pub fn get_inj_data(&self) -> u16{ self.adc.jdr1.read().jdata().bits() as u16 }
 }

@@ -5,6 +5,7 @@ mod tim;
 mod dma;
 mod opamp;
 mod gpio;
+mod adc;
 
 use defmt_rtt as _; // global logger
 use panic_probe as _;
@@ -23,6 +24,7 @@ mod app {
     use crate::tim::PwmTim;
     use crate::opamp::Opamp;
     use crate::gpio;
+    use crate::adc::{Adc1, Adc2};
 
     #[shared]
     struct Shared {
@@ -64,7 +66,13 @@ mod app {
 
         //TODO: Init and enable encoder
 
-        //TODO: Init and enable ADC
+        let mut adc1 = Adc1::new(ctx.device.ADC1);
+        let mut adc2 = Adc2::new(ctx.device.ADC2);
+        adc1.setup(ctx.device.ADC12_COMMON);
+        adc2.setup();
+
+        let zero1 = adc1.get_avg_reading(13);
+        let zero2 = adc2.get_avg_reading(16);
 
         //TODO: Init and enable DMA
 

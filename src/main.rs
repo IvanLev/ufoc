@@ -19,6 +19,8 @@ fn panic() -> ! {
 mod app {
     use stm32g4xx_hal::rcc::Config;
     use stm32g4xx_hal::prelude::*;
+    use stm32g4xx_hal::spi::NoMiso;
+    use ma734;
     use crate::tim::PwmTim;
     use crate::opamp::Opamp;
     use crate::gpio;
@@ -50,8 +52,20 @@ mod app {
         let gpiof = ctx.device.GPIOF.split(&mut rcc);
         //let gpiog = ctx.device.GPIOG.split(&mut rcc);
 
+        let nss_pin = gpiob.pb8.into_push_pull_output();
+        let spi1_sck = gpiob.pb3.into_alternate();
+        let spi1_data = gpiob.pb5.into_alternate();
+
+        let spi1 = ctx.device.SPI1.spi(
+            (spi1_sck, NoMiso, spi1_data),
+            stm32g4xx_hal::spi::MODE_0,
+            stm32g4xx_hal::spi::DuplexMode::HalfDuplexMode,
+            1.mhz(),
+            &mut rcc,
+        );
+
         //Take all needed pins before giving gpio blocks
-        gpio::setup(gpioa, gpiob, gpiof);
+        gpio::setup(gpioa, gpiof);
 
         let opamp = Opamp::new(ctx.device.OPAMP);
         opamp.init();
@@ -62,7 +76,9 @@ mod app {
         pwmTimer.setup_bldc_pwm(8500);
         pwmTimer.set_bldc_pwm(0, 0, 0);
 
-        //TODO: Init and enable encoder
+        let mut encoder = ma734::MA734::new(spi1, nss_pin);
+        let angle = encoder.read_angle().unwrap();
+        defmt::println!("Angle: {}", angle);
 
         let mut adc1 = Adc1::new(ctx.device.ADC1);
         let mut adc2 = Adc2::new(ctx.device.ADC2);
@@ -76,7 +92,8 @@ mod app {
 
         pwmTimer.motor_on();
 
-        //TODO: Start ADC1 and ADC2
+        adc1.start();
+        adc2.start();
 
         defmt::println!("Init done!");
 

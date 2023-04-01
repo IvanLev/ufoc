@@ -1,9 +1,8 @@
 #![allow(dead_code)]
 
 use stm32g4xx_hal::gpio::Alternate;
-use stm32g4xx_hal::gpio::{AF5, AF6};
+use stm32g4xx_hal::gpio::{AF6};
 use stm32g4xx_hal::gpio::gpioa::{PA8, PA9, PA10, PA11, PA12, Parts as GPIOA};
-use stm32g4xx_hal::gpio::gpiob::{Parts as GPIOB, PB3, PB5};
 use stm32g4xx_hal::gpio::gpiof::{Parts as GPIOF, PF0};
 
 //type Gpio = gpio::Instance;
@@ -13,7 +12,7 @@ use stm32g4xx_hal::gpio::gpiof::{Parts as GPIOF, PF0};
 //OPAMP1- I_A ADC1_13
 //OPAMP1- I_B ADC2_16
 
-pub fn setup(gpioa: GPIOA, gpiob: GPIOB, gpiof: GPIOF) {
+pub fn setup(gpioa: GPIOA, gpiof: GPIOF) {
     // GPIOA
     // PA0:  Analog Input voltage divider ADC2_IN1
     // PA1:  Analog OPAMP1_VINP (Input voltage divider ADC2_IN2)
@@ -73,10 +72,10 @@ pub fn setup(gpioa: GPIOA, gpiob: GPIOB, gpiof: GPIOF) {
                                    MODER5: Alternate, MODER8: Output);
 
     write_reg!(gpio, gpiob, AFRL, AFRL3: 5, AFRL5: 5);*/
-    let _pb0 = gpiob.pb0.into_pull_down_input();
-    let _pb3: PB3<Alternate<AF5>> = gpiob.pb3.into_alternate();
-    let _pb5: PB5<Alternate<AF5>> = gpiob.pb5.into_alternate();
-    let _pb8 = gpiob.pb8.into_push_pull_output();
+    //let _pb0 = gpiob.pb0.into_pull_down_input();
+    //let _pb3: PB3<Alternate<AF5>> = gpiob.pb3.into_alternate();
+    //let _pb5: PB5<Alternate<AF5>> = gpiob.pb5.into_alternate();
+    //let _pb8 = gpiob.pb8.into_push_pull_output();
 
     // GPIOC
     // PC0-15: Not on chip

@@ -1,4 +1,6 @@
-use stm32g4xx_hal::stm32::{DMAMUX, DMA1, DMA2};
+#![allow(dead_code)]
+
+use stm32g4xx_hal::stm32::{DMAMUX, DMA1};
 
 /// Driver for the DMAMUX peripheral.
 pub struct DMAMux {
@@ -88,29 +90,29 @@ impl DMAChannel {
         DMAChannel { dma, channel }
     }
 
-    pub fn setup_adc_circ(&self, par0: u32) {
-        let channel = self.channel();
-        self.dma.ccr1.write(|w| w.en().clear_bit());
-        while self.dma.ccr1.read().en().bit_is_set() {}
-        self.dma.ccr1.write(|w| w.msize().variant(1).psize().variant(1)
-            .minc().set_bit().circ().set_bit().tcie().set_bit());
-        self.dma.cpar1.write(|w| w.pa().variant(par0));
-    }
+    //pub fn setup_adc_circ(&self, par0: u32) {
+    //    let channel = self.channel();
+    //    self.dma.ccr1.write(|w| w.en().clear_bit());
+    //    while self.dma.ccr1.read().en().bit_is_set() {}
+    //    self.dma.ccr1.write(|w| w.msize().variant(1).psize().variant(1)
+    //        .minc().set_bit().circ().set_bit().tcie().set_bit());
+    //    self.dma.cpar1.write(|w| w.pa().variant(par0));
+    //}
 
-    pub fn start_adc_rx(&self, m0ar0: &mut [u16]) {
-        self.clear_flags();
-        let channel = self.channel();
-        self.dma.cmar1.write(|w| w.ma().variant(m0ar0.as_ptr() as u32));
-        self.dma.cndtr1.write(|w| w.ndt().variant(m0ar0.len() as u16));
-        self.dma.ccr1.modify(|_, w| w.en().set_bit());
-    }
+    //pub fn start_adc_rx(&self, m0ar0: &mut [u16]) {
+    //    self.clear_flags();
+    //    let channel = self.channel();
+    //    self.dma.cmar1.write(|w| w.ma().variant(m0ar0.as_ptr() as u32));
+    //    self.dma.cndtr1.write(|w| w.ndt().variant(m0ar0.len() as u16));
+    //    self.dma.ccr1.modify(|_, w| w.en().set_bit());
+    //}
 
     /// Cancel any ongoing DMA transfer.
-    pub fn stop(&self) {
-        let channel = self.channel();
-        self.dma.ccr1.modify(|_, w| w.en().clear_bit());
-        while self.dma.ccr1.read().en().bit_is_set() {}
-    }
+    //pub fn stop(&self) {
+    //    let channel = self.channel();
+    //    self.dma.
+    //    while self.dma.ccr1.read().en().bit_is_set() {}
+    //}
 
     /// Get the value of the TCIF flag for this channel.
     pub fn tcif(&self) -> bool {

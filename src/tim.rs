@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use stm32g4xx_hal::stm32::TIM1;
 use stm32g4xx_hal::stm32::tim1::ccmr1_output::{OC1M_A, OC2M_A};
 use stm32g4xx_hal::stm32::tim1::ccmr2_output::{OC3M_A, OC4M_A};

@@ -10,8 +10,6 @@ mod adc;
 use defmt_rtt as _; // global logger
 use panic_probe as _;
 
-// same panicking *behavior* as `panic-probe` but doesn't print a panic message
-// this prevents the panic message being printed *twice* when `defmt::panic` is invoked
 #[defmt::panic_handler]
 fn panic() -> ! {
     cortex_m::asm::udf()
@@ -71,8 +69,8 @@ mod app {
         adc1.setup(ctx.device.ADC12_COMMON);
         adc2.setup();
 
-        let zero1 = adc1.get_avg_reading(13);
-        let zero2 = adc2.get_avg_reading(16);
+        let _zero1 = adc1.get_avg_reading(13);
+        let _zero2 = adc2.get_avg_reading(16);
 
         //TODO: Init and enable DMA
 
@@ -99,7 +97,7 @@ mod app {
     }
 
     #[task(binds=ADC1_2, priority=5)]//, local=[adc1, adc2, encoder])]
-    fn adc_1_2(cx: adc_1_2::Context) {
+    fn adc_1_2(_cx: adc_1_2::Context) {
         //defmt::println!("inj: {}, {}", cx.local.adc1.get_inj_data() - cx.shared.zero1, cx.local.adc2.get_inj_data() - cx.shared.zero2);
         //defmt::println!("inj: {}, {}", cx.shared.zero1, cx.shared.zero2);
         //if cx.local.adc1.read_jeos() {
@@ -109,12 +107,12 @@ mod app {
     }
 
     #[task(binds=DMA1_CH1, priority=4)]//, local=[adc1_dma])]
-    fn dma1_ch1(cx: dma1_ch1::Context) {
+    fn dma1_ch1(_cx: dma1_ch1::Context) {
         //cx.local.adc1_dma.clear_tcif();
     }
 
     #[task(binds=DMA1_CH2, priority=3)]//, local=[adc2_dma])]
-    fn dma1_ch2(cx: dma1_ch2::Context) {
+    fn dma1_ch2(_cx: dma1_ch2::Context) {
         //cx.local.adc2_dma.clear_tcif();
         //    defmt::println!("ADC2 regular channels: {}", unsafe { ADC1BUF});
     }

@@ -2,7 +2,7 @@
 
 use stm32g4xx_hal::gpio::Alternate;
 use stm32g4xx_hal::gpio::{AF5, AF6};
-use stm32g4xx_hal::gpio::gpioa::{PA8, PA9, PA10, PA11, PA12, PA13, PA14, Parts as GPIOA};
+use stm32g4xx_hal::gpio::gpioa::{PA8, PA9, PA10, PA11, PA12, Parts as GPIOA};
 use stm32g4xx_hal::gpio::gpiob::{Parts as GPIOB, PB3, PB5};
 use stm32g4xx_hal::gpio::gpiof::{Parts as GPIOF, PF0};
 

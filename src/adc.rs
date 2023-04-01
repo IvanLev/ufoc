@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use stm32g4xx_hal::stm32::{ADC1, ADC2, ADC12_COMMON};
 use stm32g4xx_hal::stm32::adc1::smpr1::SMP0_A::{Cycles245};
 use stm32g4xx_hal::stm32::adc1::smpr2::SMP16_A::{Cycles25};
@@ -81,7 +83,7 @@ impl Adc1 {
         self.adc.cfgr2.write(|w| unsafe {w.bits(0)});
         self.adc.ier.write(|w| unsafe {w.bits(0)});
 
-        let mut vref_int : f32 = 0.0;
+        let vref_int : f32;
         let vref_cal : u16;
 
         unsafe {

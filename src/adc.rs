@@ -23,20 +23,30 @@ impl Adc1 {
         Self { adc, vref_cal: 0.0 }
     }
 
+    #[inline(always)]
     pub fn setup(&mut self, adc12: ADC12_COMMON) {
+        unsafe {
+            let rcc_ptr = &(*stm32g4xx_hal::stm32::RCC::ptr());
+            rcc_ptr.cfgr.modify(|_, w| w.hpre().div1().ppre1().div1().ppre2().div1());
+            rcc_ptr.ahb2enr.modify(|_, w| w.adc12en().set_bit());
+            rcc_ptr.ccipr.modify(|_, w| w.adc12sel().pllp());
+        }
         self.adc.cr.modify(|_, w| w.deeppwd().clear_bit());
-
         adc12.ccr.modify(|_, w| w.dual().variant(DUAL_A::DualRj));
 
         adc12.ccr.modify(|_, w| w.vrefen().set_bit().dmacfg().set_bit());
-        self.adc.cr.modify(|_, w| w.advregen().enabled());
+        self.adc.cr.modify(|_, w| w.advregen().set_bit());
+        defmt::println!("Wait");
         while self.adc.cr.read().advregen().bit_is_clear() {} // Wait for the avrgen
+        defmt::println!("Before delay");
 
         cortex_m::asm::delay(300_000);
-
+        defmt::println!("After delay");
         self.adc.cr.modify(|_, w| w.adcal().set_bit().adcaldif().single_ended());
-        while self.adc.cr.read().adcal().bit_is_set() {} // Wait for the calibration
-
+        while self.adc.cr.read().adcal().bit_is_set() {
+            defmt::println!("Calibrating");
+        } // Wait for the calibration
+        defmt::println!("Calc VREF");
         self.calc_vref();
 
         self.adc.cfgr.write(|w| w.jqdis().disabled().dmaen().enabled().dmacfg().circular());

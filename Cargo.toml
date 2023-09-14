@@ -1,18 +1,55 @@
 [package]
-name = "ufoc"
-version = "0.1.0"
+authors = ["Your name <your@em.ail>"]
+name = "project_name"
 edition = "2021"
+version = "0.1.0"
 
 [dependencies]
-cortex-m = { version = "^0.7.7", features = ["critical-section-single-core"]}
-cortex-m-rt = "0.7.3"
-defmt = "0.3.2"
+defmt = "0.3.5"
 defmt-rtt = "0.4.0"
-panic-probe = { version = "0.3.0", features = ["print-defmt"] }
-cortex-m-rtic = "1"
-ma734 = "0.1.1"
+panic-probe = { version = "0.3.1", features = ["print-defmt"] }
 
-[dependencies.stm32g4xx-hal]
-path = "../../../CLionProjects/stm32g4xx-hal"
-features = ["stm32g431", "rt", "defmt"]
+cortex-m = {version = "0.7.1", features = ["critical-section-single-core"]}
+cortex-m-rt = "0.7.3"
+cortex-m-rtic = "1.1.4"
 
+# Change this import as required for your MCU.
+stm32-hal2 = { git = "https://github.com/David-OConnor/stm32-hal/", version = "1.6.3", features = ["g431", "g4rt"]}
+
+# cargo build/run
+[profile.dev]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = 3 # <-
+overflow-checks = true # <-
+
+# cargo test
+[profile.test]
+codegen-units = 1
+debug = 2
+debug-assertions = true # <-
+incremental = false
+opt-level = 3 # <-
+overflow-checks = true # <-
+
+# cargo build/run --release
+[profile.release]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = 3 # <-
+overflow-checks = false # <-
+
+# cargo test --release
+[profile.bench]
+codegen-units = 1
+debug = 2
+debug-assertions = false # <-
+incremental = false
+lto = 'fat'
+opt-level = 3 # <-
+overflow-checks = false # <-
